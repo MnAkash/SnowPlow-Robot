@@ -1,37 +1,61 @@
 //All speeds are in percentage
 
-void forward(int speed){
+void motor(int left, int right)//left, right value ranges from (-maxSpeed, maxSpeed)
+{
+  //positive value represents forward motion of that perticular motor, negative is vice versa
+  
+  //for example (left= 125, right= -125)
+  //Left motor will go forward at speed 125
+  //Right motor will go backward at speed 125
+  
+  if(left>0){
+   digitalWrite(dir1, HIGH);
+   analogWrite(pwm1, left);
+  }
+  else{
+    digitalWrite(dir1, LOW);
+    analogWrite(pwm1, left);
+  }
+
+  if(right>0){
+  digitalWrite(dir2, HIGH);
+  analogWrite(pwm2, right);
+  }
+  else{
+   digitalWrite(dir2, LOW);
+   analogWrite(pwm2, right);
+  }
+}
+ 
+ 
+void forward(int speedValue){
   digitalWrite(dir1, HIGH);
   digitalWrite(dir2, HIGH);
 
-  int speedValue = (speed/100)*255;
   analogWrite(pwm1, speedValue);
   analogWrite(pwm2, speedValue);
 }
 
-void backward(int speed){
+void backward(int speedValue){
   digitalWrite(dir1, LOW);
   digitalWrite(dir2, LOW);
 
-  int speedValue = (speed/100)*255;
   analogWrite(pwm1, speedValue);
   analogWrite(pwm2, speedValue);
 }
 
-void right(int speed){
+void right(int speedValue){
   digitalWrite(dir1, LOW);
   digitalWrite(dir2, HIGH);
 
-  int speedValue = (speed/100)*255;
   analogWrite(pwm1, speedValue);
   analogWrite(pwm2, speedValue);
 }
 
-void left(int speed){
+void left(int speedValue){
   digitalWrite(dir1, HIGH);
   digitalWrite(dir2, LOW);
 
-  int speedValue = (speed/100)*255;
   analogWrite(pwm1, speedValue);
   analogWrite(pwm2, speedValue);
 }

@@ -23,13 +23,12 @@
 
 QMC5883LCompass compass;
 
-
 const int dir1 = 7;
 const int pwm1 = 5;
 const int dir2 = 8;
 const int pwm2 = 6;
 
-int azimuth, bearing;
+
 
 void setup() {
   Serial.begin(9600);
@@ -45,12 +44,13 @@ void setup() {
 }
 
 void loop() {
+
+}
+
+int getDirection(){
   compass.read();
-  azimuth = compass.getAzimuth();
-  Serial.print(" Azimuth: ");
-  Serial.print(azimuth);
-  
-
-  delay(100);
-
+  int azimuth = compass.getAzimuth();
+  //Serial.print(" Azimuth: ");
+  //Serial.print(azimuth);
+  return azimuth;
 }
