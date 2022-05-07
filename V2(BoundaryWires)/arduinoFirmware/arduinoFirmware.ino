@@ -21,8 +21,8 @@
 // QMC5883L Compass Library
 #include <QMC5883LCompass.h>
 
-#define threshold 500 //threshold for boundary wire
-#define robotSpeed 50 //maxvalue 255
+#define threshold 250 //threshold for boundary wire; low value if found
+#define robotSpeed 120 //maxvalue 255
 
 QMC5883LCompass compass;
 
@@ -43,6 +43,8 @@ void setup() {
   pinMode(pwm1, OUTPUT);
   pinMode(pwm2, OUTPUT);
 
+  brake();
+  
   Wire.begin();
   compass.init();
   compass.setCalibration(-1800, 1482, -1997, 1453, -1582, 1641);
@@ -54,21 +56,28 @@ void setup() {
   south  = limitTo360(north + 180);
 
 
-  Serial.println("North){ ");
+  Serial.println("North: ");
   Serial.println(north);
-  Serial.println("South){ ");
+  Serial.println("South: ");
   Serial.println(south);
-  Serial.println("East){ ");
+  Serial.println("East: ");
   Serial.println(east);
-  Serial.println("West){ ");
+  Serial.println("West: ");
   Serial.println(west);
+
+  analogRead(A0);
+  delay(3000);//Wait 3 second
+
 }
 
 void loop() {
   
 
   //==============Rotation at ends part
-  if(isBoundary()) changeCourse();
+  if(isBoundary()){
+    Serial.println("Boundary wire found");
+    changeCourse();
+  }
 
   //=====move ahead in one direction it is faced at
   else moveAhead();
@@ -84,7 +93,7 @@ int getDirection(){
 
 int isBoundary(){
   int value = analogRead(A0);
-  if(value > threshold){
+  if(value < threshold){
     return true;
   }
   else return false;
@@ -219,22 +228,22 @@ void changeCourse(){
     if (current_dir == 'N'){
         backward(robotSpeed);
         delay(1000);
-        rotateWest(20);
+        rotateWest(robotSpeed);
         delay(1000);
         forward(robotSpeed);
         delay(2000);
-        rotateSouth(20);
+        rotateSouth(robotSpeed);
         delay(1000);
         forward(robotSpeed);
     }
     else if(current_dir == 'S'){
         backward(robotSpeed);
         delay(1000);
-        rotateWest(20);
+        rotateWest(robotSpeed);
         delay(1000);
         forward(robotSpeed);
         delay(2000);
-        rotateNorth(20);
+        rotateNorth(robotSpeed);
         delay(1000);
         forward(robotSpeed);
     }
