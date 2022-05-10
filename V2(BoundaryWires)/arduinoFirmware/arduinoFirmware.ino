@@ -21,8 +21,10 @@
 // QMC5883L Compass Library
 #include <QMC5883LCompass.h>
 
-#define threshold 250 //threshold for boundary wire; low value if found
-#define robotSpeed 120 //maxvalue 255
+
+#define USE_PI_COMPASS true
+#define threshold 150 //threshold for boundary wire; low value if found
+#define robotSpeed 100 //maxvalue 255
 
 QMC5883LCompass compass;
 
@@ -31,29 +33,39 @@ const int pwm1 = 5;
 const int dir2 = 8;
 const int pwm2 = 6;
 
-int error_acceptance = 3; //degrees
+int error_acceptance = 10; //degrees
 char current_dir = 'N'; //can be W/S/E
 int east, west, north, south;
+int sensorReading, value;
 
 void setup() {
-  Serial.begin(9600);
+  pinMode(dir1, INPUT_PULLUP);
+  pinMode(dir2, INPUT_PULLUP);
+  pinMode(pwm1, INPUT_PULLUP);
+  pinMode(pwm2, INPUT_PULLUP);
   
-  pinMode(dir1, OUTPUT);
-  pinMode(dir2, OUTPUT);
-  pinMode(pwm1, OUTPUT);
-  pinMode(pwm2, OUTPUT);
+  Serial.begin(19200);
+  
 
-  brake();
-  
   Wire.begin();
-  compass.init();
-  compass.setCalibration(-1800, 1482, -1997, 1453, -1582, 1641);
 
-
-  north = getDirection();
-  west  = limitTo360(north + 90);
-  east = limitTo360(north - 90);
-  south  = limitTo360(north + 180);
+  if(USE_PI_COMPASS){
+    compass.init();
+    compass.setCalibration(0, 2230, 0, 988, -907, 0);
+    north = getDirection();
+    west  = limitTo360(north + 90);
+    east = limitTo360(north - 90);
+    south  = limitTo360(north + 180);
+  }
+  else{
+    Serial.write('c');
+    while(Serial.available()>0){
+      north = Serial.readString().toInt();
+      west  = limitTo360(north + 90);
+      east = limitTo360(north - 90);
+      south  = limitTo360(north + 180);
+    }
+  }
 
 
   Serial.println("North: ");
@@ -65,17 +77,23 @@ void setup() {
   Serial.println("West: ");
   Serial.println(west);
 
-  analogRead(A0);
-  delay(3000);//Wait 3 second
+  pinMode(dir1, OUTPUT);
+  pinMode(dir2, OUTPUT);
+  pinMode(pwm1, OUTPUT);
+  pinMode(pwm2, OUTPUT);
+  brake();
+  delay(5000);//Wait 5 second
 
 }
 
 void loop() {
   
-
+  
   //==============Rotation at ends part
-  if(isBoundary()){
+  sensorReading = analogRead(A0);
+  if(value < threshold){
     Serial.println("Boundary wire found");
+    Serial.println(value);
     changeCourse();
   }
 
@@ -84,13 +102,24 @@ void loop() {
 }
 
 int getDirection(){
-  compass.read();
-  int azimuth = compass.getAzimuth();
-  //Serial.println(" Azimuth){ ");
-  //Serial.println(azimuth);
-  return azimuth;
+  if (USE_PI_COMPASS){
+    Serial.write('c');
+    while(Serial.available()>0){
+      azimuth = Serial.readString().toInt();
+      //Serial.println("Azimuth");
+      //Serial.println(azimuth);
+    }
+    return azimuth;
+  }
+  else{
+    compass.read();
+    int azimuth = compass.getAzimuth();
+    //Serial.println("Azimuth");
+    //Serial.println(azimuth);
+    return azimuth;
+  }
 }
-
+    
 int isBoundary(){
   int value = analogRead(A0);
   if(value < threshold){
@@ -112,11 +141,11 @@ int limitTo360(int val){
 char whereToRotate(int current, int required){
     //returns 'L' of 'R'
     if (current < required){
-        if (abs(current-required)<180) return 'R';
+        if(abs(current-required)<180) return 'R';
         else return 'L';//left
     }
     else if(current > required){
-        if (abs(current-required)<180) return 'L';
+        if(abs(current-required)<180) return 'L';
         else return 'R'; //right
     }
     else{}
@@ -126,6 +155,7 @@ void rotateWest(int speed){
     int bearing = getDirection();
     while( abs(bearing-west) > error_acceptance ){
         bearing = getDirection();
+        Serial.println(bearing);
         if (whereToRotate(bearing,west) == 'R'){
             turnRight(speed);
             Serial.println("Rotating right");

@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-0,2----------2,2
-|             |
-|             |
-|             |
-|             |
-0,0----------2,0
 
         North
 
@@ -16,15 +10,14 @@ West            East
 counterclocwise rotation is negative
 
 """
-from matplotlib.cbook import contiguous_regions
-import scipy as sp
-
 import serial
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import gy271compass as GY271
 from time import time
 
+compass = GY271.Compass()
 
-ser = serial.Serial('/dev/ttyACM0')
-print(ser.name)
-
+with serial.Serial('/dev/ttyACM0', 19200, timeout=1) as ser:
+     x = ser.read()          # read one byte
+     if x == 'c':
+        direction, temp = compass.reading()
+        ser.write(direction)
