@@ -22,7 +22,7 @@
 #include <QMC5883LCompass.h>
 
 
-#define USE_PI_COMPASS true
+#define USE_PI_COMPASS false
 #define threshold 150 //threshold for boundary wire; low value if found
 #define robotSpeed 100 //maxvalue 255
 
@@ -36,7 +36,7 @@ const int pwm2 = 6;
 int error_acceptance = 10; //degrees
 char current_dir = 'N'; //can be W/S/E
 int east, west, north, south;
-int sensorReading, value;
+int sensorReading, value, azimuth;
 
 void setup() {
   pinMode(dir1, INPUT_PULLUP);
@@ -50,14 +50,6 @@ void setup() {
   Wire.begin();
 
   if(USE_PI_COMPASS){
-    compass.init();
-    compass.setCalibration(0, 2230, 0, 988, -907, 0);
-    north = getDirection();
-    west  = limitTo360(north + 90);
-    east = limitTo360(north - 90);
-    south  = limitTo360(north + 180);
-  }
-  else{
     Serial.write('c');
     while(Serial.available()>0){
       north = Serial.readString().toInt();
@@ -65,6 +57,14 @@ void setup() {
       east = limitTo360(north - 90);
       south  = limitTo360(north + 180);
     }
+  }
+  else{
+    compass.init();
+    compass.setCalibration(-947, 773, -880, 960, -1031, 0);
+    north = getDirection();
+    west  = limitTo360(north + 90);
+    east = limitTo360(north - 90);
+    south  = limitTo360(north + 180);
   }
 
 
@@ -87,7 +87,8 @@ void setup() {
 }
 
 void loop() {
-  
+  //Serial.println(getDirection());
+  //delay(50);
   
   //==============Rotation at ends part
   sensorReading = analogRead(A0);
@@ -113,7 +114,7 @@ int getDirection(){
   }
   else{
     compass.read();
-    int azimuth = compass.getAzimuth();
+    azimuth = compass.getAzimuth();
     //Serial.println("Azimuth");
     //Serial.println(azimuth);
     return azimuth;
