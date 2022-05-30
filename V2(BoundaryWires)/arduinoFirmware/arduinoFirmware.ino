@@ -14,6 +14,14 @@
  * dir2   - D8
  * pwm1   - D5
  * pwm2   - D6
+
+        North
+
+West            East
+
+        South
+
+counterclocwise rotation is negative
  */
 
 // I2C Library
@@ -23,7 +31,7 @@
 
 
 #define USE_PI_COMPASS false
-#define threshold 150 //threshold for boundary wire; low value if found
+#define threshold 600 //threshold for boundary wire; low value if found
 #define robotSpeed 100 //maxvalue 255
 
 QMC5883LCompass compass;
@@ -44,7 +52,7 @@ void setup() {
   pinMode(pwm1, INPUT_PULLUP);
   pinMode(pwm2, INPUT_PULLUP);
   
-  Serial.begin(19200);
+  Serial.begin(9600);
   
 
   Wire.begin();
@@ -53,17 +61,17 @@ void setup() {
     Serial.write('c');
     while(Serial.available()>0){
       north = Serial.readString().toInt();
-      west  = limitTo360(north + 90);
-      east = limitTo360(north - 90);
+      west  = limitTo360(north - 90);
+      east = limitTo360(north + 90);
       south  = limitTo360(north + 180);
     }
   }
   else{
     compass.init();
-    compass.setCalibration(-947, 773, -880, 960, -1031, 0);
+    compass.setCalibration(-1922, 1437, -1960, 1658, -1452, 1577);
     north = getDirection();
-    west  = limitTo360(north + 90);
-    east = limitTo360(north - 90);
+    west  = limitTo360(north - 90);
+    east = limitTo360(north + 90);
     south  = limitTo360(north + 180);
   }
 
@@ -92,7 +100,7 @@ void loop() {
   
   //==============Rotation at ends part
   sensorReading = analogRead(A0);
-  if(value < threshold){
+  if(sensorReading < threshold){
     Serial.println("Boundary wire found");
     Serial.println(value);
     changeCourse();
@@ -237,14 +245,14 @@ void moveAhead(){
         forward(robotSpeed);
     }
 
-    else if(whereToRotate(current_bearing, required_bearing == 'right') ){ //if rotated too left, turn right
+    else if(whereToRotate(current_bearing, required_bearing == 'R') ){ //if rotated too left, turn right
         while ((current_bearing-required_bearing) > error_acceptance){
             turnRight(robotSpeed);
             current_bearing = getDirection();
         }
         forward(robotSpeed);
     }
-    else if(whereToRotate(current_bearing, required_bearing == 'left') ){ //if rotated too right, turn left
+    else if(whereToRotate(current_bearing, required_bearing == 'L') ){ //if rotated too right, turn left
         while ((current_bearing-required_bearing) > error_acceptance){
             turnLeft(robotSpeed);
             current_bearing = getDirection();
