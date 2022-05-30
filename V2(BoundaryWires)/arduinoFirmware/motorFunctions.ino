@@ -45,16 +45,16 @@ void backward(int speedValue){
 }
 
 void turnRight(int speedValue){
-  digitalWrite(dir1, LOW);
-  digitalWrite(dir2, HIGH);
+  digitalWrite(dir1, HIGH);
+  digitalWrite(dir2, LOW);
 
   analogWrite(pwm1, speedValue);
   analogWrite(pwm2, speedValue);
 }
 
 void turnLeft(int speedValue){
-  digitalWrite(dir1, HIGH);
-  digitalWrite(dir2, LOW);
+  digitalWrite(dir1, LOW);
+  digitalWrite(dir2, HIGH);
 
   analogWrite(pwm1, speedValue);
   analogWrite(pwm2, speedValue);
