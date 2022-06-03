@@ -41,7 +41,7 @@ const int pwm1 = 5;
 const int dir2 = 8;
 const int pwm2 = 6;
 
-int error_acceptance = 10; //degrees
+int error_acceptance = 15; //degrees
 char current_dir = 'N'; //can be W/S/E
 int east, west, north, south;
 int sensorReading, value, azimuth;
@@ -245,14 +245,14 @@ void moveAhead(){
         forward(robotSpeed);
     }
 
-    else if(whereToRotate(current_bearing, required_bearing == 'R') ){ //if rotated too left, turn right
+    else if(whereToRotate(current_bearing, required_bearing) == 'R' ){ //if rotated too left, turn right
         while ((current_bearing-required_bearing) > error_acceptance){
             turnRight(robotSpeed);
             current_bearing = getDirection();
         }
         forward(robotSpeed);
     }
-    else if(whereToRotate(current_bearing, required_bearing == 'L') ){ //if rotated too right, turn left
+    else if(whereToRotate(current_bearing, required_bearing)  == 'L'){ //if rotated too right, turn left
         while ((current_bearing-required_bearing) > error_acceptance){
             turnLeft(robotSpeed);
             current_bearing = getDirection();
