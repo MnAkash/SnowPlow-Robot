@@ -32,7 +32,7 @@ counterclocwise rotation is negative
 
 #define USE_PI_COMPASS false
 #define threshold 600 //threshold for boundary wire; low value if found
-#define robotSpeed 100 //maxvalue 255
+#define robotSpeed 70 //maxvalue 255
 
 QMC5883LCompass compass;
 
@@ -54,7 +54,6 @@ void setup() {
   
   Serial.begin(9600);
   
-
   Wire.begin();
 
   if(USE_PI_COMPASS){
@@ -75,7 +74,7 @@ void setup() {
     south  = limitTo360(north + 180);
   }
 
-
+  /*
   Serial.println("North: ");
   Serial.println(north);
   Serial.println("South: ");
@@ -84,7 +83,8 @@ void setup() {
   Serial.println(east);
   Serial.println("West: ");
   Serial.println(west);
-
+  */
+  
   pinMode(dir1, OUTPUT);
   pinMode(dir2, OUTPUT);
   pinMode(pwm1, OUTPUT);
@@ -102,12 +102,14 @@ void loop() {
   sensorReading = analogRead(A0);
   if(sensorReading < threshold){
     Serial.println("Boundary wire found");
-    Serial.println(value);
+    Serial.println(sensorReading);
     changeCourse();
   }
 
   //=====move ahead in one direction it is faced at
-  else moveAhead();
+  else{
+    moveAhead();
+  }
 }
 
 int getDirection(){
@@ -243,18 +245,21 @@ void moveAhead(){
 
     if (abs(current_bearing-required_bearing) < error_acceptance){
         forward(robotSpeed);
+        Serial.println("Forward");
     }
 
     else if(whereToRotate(current_bearing, required_bearing) == 'R' ){ //if rotated too left, turn right
-        while ((current_bearing-required_bearing) > error_acceptance){
-            turnRight(robotSpeed);
+        while (abs(current_bearing-required_bearing) > error_acceptance){
+            turnRight(robotSpeed -20);
+            Serial.println("Right");
             current_bearing = getDirection();
         }
         forward(robotSpeed);
     }
     else if(whereToRotate(current_bearing, required_bearing)  == 'L'){ //if rotated too right, turn left
-        while ((current_bearing-required_bearing) > error_acceptance){
-            turnLeft(robotSpeed);
+        while (abs(current_bearing-required_bearing) > error_acceptance){
+            turnLeft(robotSpeed -20);
+            Serial.println("Left");
             current_bearing = getDirection();
         }
         forward(robotSpeed);
