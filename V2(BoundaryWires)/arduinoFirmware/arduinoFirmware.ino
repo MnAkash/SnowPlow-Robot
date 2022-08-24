@@ -9,11 +9,23 @@
  * SCL     -  A5
  * 
  * 
+ * Witmotion Compass - Arduino Nano
+ * -----------------------
+ * GND     -  GND
+ * VCC     -  5V
+ * TX     -  RX
+ * RX     -  TX
+ * 
  * Motor  - Arduino Nano
  * dir1   - D7
  * dir2   - D8
  * pwm1   - D5
  * pwm2   - D6
+ * 
+ * 
+ * Brush motor - Arduino
+ * dir         - D4
+ * pwm         - D3
 
         North
 
@@ -27,30 +39,39 @@ counterclocwise rotation is negative
 // I2C Library
 #include <Wire.h>
 // QMC5883L Compass Library
-#include <QMC5883LCompass.h>
+//#include <QMC5883LCompass.h>
 
+#include <JY901.h>
 
 #define USE_PI_COMPASS false
-#define threshold 600 //threshold for boundary wire; low value if found
+#define threshold_left 500 //threshold for boundary wire; low value if found
+#define threshold_right 600 //threshold for boundary wire; low value if found
 #define robotSpeed 70 //maxvalue 255
 
-QMC5883LCompass compass;
+//QMC5883LCompass compass;
 
 const int dir1 = 7;
 const int pwm1 = 5;
 const int dir2 = 8;
 const int pwm2 = 6;
 
+const int dir_brush = 4;
+const int pwm_brush = 3;
+
 int error_acceptance = 15; //degrees
 char current_dir = 'N'; //can be W/S/E
 int east, west, north, south;
 int sensorReading, value, azimuth;
+unsigned int sensorCounterLeft=0, sensorCounterRight = 0;
+
 
 void setup() {
   pinMode(dir1, INPUT_PULLUP);
   pinMode(dir2, INPUT_PULLUP);
   pinMode(pwm1, INPUT_PULLUP);
   pinMode(pwm2, INPUT_PULLUP);
+  pinMode(pwm_brush, INPUT_PULLUP);
+  pinMode(pwm_brush, INPUT_PULLUP);
   
   Serial.begin(9600);
   
@@ -66,8 +87,8 @@ void setup() {
     }
   }
   else{
-    compass.init();
-    compass.setCalibration(-1922, 1437, -1960, 1658, -1452, 1577);
+    //compass.init();
+    //compass.setCalibration(-1922, 1437, -1960, 1658, -1452, 1577);
     north = getDirection();
     west  = limitTo360(north - 90);
     east = limitTo360(north + 90);
@@ -89,6 +110,8 @@ void setup() {
   pinMode(dir2, OUTPUT);
   pinMode(pwm1, OUTPUT);
   pinMode(pwm2, OUTPUT);
+  pinMode(pwm_brush, OUTPUT);
+  pinMode(pwm_brush, OUTPUT);
   brake();
   delay(5000);//Wait 5 second
 
@@ -99,10 +122,8 @@ void loop() {
   //delay(50);
   
   //==============Rotation at ends part
-  sensorReading = analogRead(A0);
-  if(sensorReading < threshold){
-    Serial.println("Boundary wire found");
-    Serial.println(sensorReading);
+  if(isBoundary()){
+    Serial.println("Boundary end detected");
     changeCourse();
   }
 
@@ -123,20 +144,51 @@ int getDirection(){
     return azimuth;
   }
   else{
+    /*
     compass.read();
     azimuth = compass.getAzimuth();
+    */
+    azimuth = (float)JY901.stcAngle.Angle[2]/32768*180; //Rotation along Z axis
     //Serial.println("Azimuth");
     //Serial.println(azimuth);
     return azimuth;
   }
 }
-    
-int isBoundary(){
-  int value = analogRead(A0);
-  if(value < threshold){
+
+
+bool isLeft(){
+  //Is left foundary sensor found
+   int value_left = analogRead(A0);
+   if(value_left > threshold_left)return true;
+   else return false;
+}
+bool isRight(){
+  //Is right foundary sensor found
+   int value_left = analogRead(A0);
+   if(value_right < threshold_right)return true;
+   else return false;
+}
+
+
+bool isBoundary(){
+  //  Serial.print(value_left);
+  //  Serial.print("\t");
+  //  Serial.println(value_right);
+
+  if(isLeft())sensorCounterLeft++;
+  if(isRight())sensorCounterRight++;
+
+  if(sensorCounterLeft>100)sensorCounterLeft = 0;
+  if(sensorCounterRight>100)sensorCounterRight = 0;
+  
+  if(1<sensorCounterLeft<100 and 1<sensorCounterRight<100){
+    sensorCounterLeft = 0;
+    sensorCounterRight = 0;
     return true;
   }
   else return false;
+
+  
 }
 
 int limitTo360(int val){
@@ -265,6 +317,10 @@ void moveAhead(){
         forward(robotSpeed);
     }
 }
+
+
+
+
 
 void changeCourse(){
     //change course at the end of the line
