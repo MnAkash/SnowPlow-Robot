@@ -64,3 +64,12 @@ void brake(){
   analogWrite(pwm1, 0);
   analogWrite(pwm2, 0);
 }
+
+void brushON(int speedValue){
+  digitalWrite(dir_brush, HIGH);
+  analogWrite(pwm_brush, speedValue);
+}
+void brushOFF(int speedValue){
+  digitalWrite(dir_brush, HIGH);
+  analogWrite(pwm_brush, 0);
+}
