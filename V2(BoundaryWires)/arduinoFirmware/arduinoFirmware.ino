@@ -1,7 +1,7 @@
 /*
  * Connections
  * 
- * Compass - Arduino Nano
+ * G271 Compass - Arduino Nano
  * -----------------------
  * GND     -  GND
  * VCC     -  5V
@@ -33,7 +33,8 @@ West            East
 
         South
 
-counterclocwise rotation is negative
+counterclocwise rotation is negative(on G271 compass)
+                            positive(on witmotion compass)
  */
 
 // I2C Library
@@ -47,6 +48,7 @@ counterclocwise rotation is negative
 #define threshold_left 500 //threshold for boundary wire; low value if found
 #define threshold_right 600 //threshold for boundary wire; low value if found
 #define robotSpeed 70 //maxvalue 255
+int maxSpeed = robotSpeed;//used in pid
 
 //QMC5883LCompass compass;
 
@@ -58,11 +60,20 @@ const int pwm2 = 6;
 const int dir_brush = 4;
 const int pwm_brush = 3;
 
-int error_acceptance = 15; //degrees
+int error_acceptance = 5; //degrees
 char current_dir = 'N'; //can be W/S/E
 int east, west, north, south;
 int sensorReading, value, azimuth;
 unsigned int sensorCounterLeft=0, sensorCounterRight = 0;
+
+
+//PID controller >> Proportional(P), Derivative(D), Integral(I)
+int kp = 15;                     //Increrase Kp to increase sensitivity (Coarse tune)
+int kd = 0 ;                     //Increrase Kd to decrease sensitivity (Fine tune)
+int leftSpeed, rightSpeed;
+float error, prevError = 0;
+int motorResponse;
+float correction;
 
 
 void setup() {
@@ -149,6 +160,7 @@ int getDirection(){
     azimuth = compass.getAzimuth();
     */
     azimuth = (float)JY901.stcAngle.Angle[2]/32768*180; //Rotation along Z axis
+    azimuth = map(azimuth, -180,180, 0, 360);//witmotion compass returns [-200,200] range values
     //Serial.println("Azimuth");
     //Serial.println(azimuth);
     return azimuth;
@@ -164,7 +176,7 @@ bool isLeft(){
 }
 bool isRight(){
   //Is right foundary sensor found
-   int value_left = analogRead(A0);
+   int value_left = analogRead(A1);
    if(value_right < threshold_right)return true;
    else return false;
 }
@@ -214,77 +226,79 @@ char whereToRotate(int current, int required){
     else{}
 }
 
-void rotateWest(int speed){
-    int bearing = getDirection();
-    while( abs(bearing-west) > error_acceptance ){
-        bearing = getDirection();
-        Serial.println(bearing);
-        if (whereToRotate(bearing,west) == 'R'){
+void rotateTo(char dir, int speed){
+    int required_bearing;
+    if(dir=='N')required_bearing = north;
+    else if(dir=='E')required_bearing = east;
+    else if(dir=='W')required_bearing = west;
+    else if(dir=='S')required_bearing = south;
+    
+    int current_bearing = getDirection();
+    while( abs(current_bearing-required_bearing) > error_acceptance ){
+        current_bearing = getDirection();
+        Serial.println(current_bearing);
+        if (whereToRotate(current_bearing,required_bearing) == 'R'){
             turnRight(speed);
             Serial.println("Rotating right");
         }
-        else if(whereToRotate(bearing,west) == 'L'){
+        else if(whereToRotate(current_bearing,required_bearing) == 'L'){
             turnLeft(speed);
             Serial.println("Rotating left");
         }
     }
     brake();
-    current_dir = 'W';
-    Serial.println("Rotated to west");
-}
-void rotateEast(int speed){
-    int bearing = getDirection();
-    while( abs(bearing-east) > error_acceptance ){
-        bearing = getDirection();
-        if (whereToRotate(bearing,east) == 'R'){
-            turnRight(speed);
-            Serial.println("Rotating right");
-        }
-        else if(whereToRotate(bearing,east) == 'L'){
-            turnLeft(speed);
-            Serial.println("Rotating left");
-        }
-    }
-    brake();
-    current_dir = 'E';
-    Serial.println("Rotated to east");
-}
-void rotateSouth(int speed){
-    int bearing = getDirection();
-    while( abs(bearing-south) > error_acceptance ){
-        bearing = getDirection();
-        if (whereToRotate(bearing,south) == 'R'){
-            turnRight(speed);
-            Serial.println("Rotating right");
-        }
-        else if(whereToRotate(bearing,south) == 'L'){
-            turnLeft(speed);
-            Serial.println("Rotating left");
-        }
-    }
-    brake();
-    current_dir = 'S';
-    Serial.println("Rotated to south");
-}
-void rotateNorth(int speed){
-    int bearing = getDirection();
-    while( abs(bearing-north) > error_acceptance ){
-        bearing = getDirection();
-        if (whereToRotate(bearing,north) == 'R'){
-            turnRight(speed);
-            Serial.println("Rotating right");
-        }
-        else if(whereToRotate(bearing,north)== 'L'){
-            turnLeft(speed);
-            Serial.println("Rotating left");
-        }
-    }
-    brake();
-    current_dir = 'N';
-    Serial.println("Rotated to north");
+    current_dir = dir;
+
+    if(dir=='N')Serial.println("Rotated to north");
+    else if(dir=='E')Serial.println("Rotated to east");
+    else if(dir=='W')Serial.println("Rotated to west");
+    else if(dir=='S')Serial.println("Rotated to south");
 }
 
+
+
+
+void moveAhead_PID(){
+    //counterclocwise rotation is positive
+    //move ahead in one direction it is faced at current bearing
+    int required_bearing;
+    int current_bearing;
+    if (current_dir   == 'E') required_bearing = east;
+    else if(current_dir == 'W') required_bearing = west;
+    else if(current_dir == 'N') required_bearing = north;
+    else if(current_dir == 'S') required_bearing = south;
+
+    current_bearing = getDirection();
+
+    error = required_bearing - current_bearing;              //Error is the offset from required direction 
+    correction = (kp * error) + (kd * (error - prevError)); //proportional correction uses only error.  differental correction calculated by taking difference of error
+    prevError = error;
+    motorResponse = (int)correction;
+  
+  
+    //keeping correctd value inside max speed limit
+    if (motorResponse > maxSpeed) motorResponse = maxSpeed;
+    if (motorResponse < -maxSpeed) motorResponse = -maxSpeed;
+  
+  
+    if (motorResponse > 0)
+    {
+      //will rotate right
+      rightSpeed = maxSpeed- motorResponse;
+      leftSpeed = maxSpeed ;
+    }
+    else
+    {
+      //will rotate right
+      rightSpeed = maxSpeed;
+      leftSpeed = maxSpeed - motorResponse;
+    }
+    motor(leftSpeed, rightSpeed);
+}
+
+
 void moveAhead(){
+    //without pid
     //move ahead in one direction it is faced at
     int required_bearing;
     int current_bearing;
@@ -328,22 +342,22 @@ void changeCourse(){
     if (current_dir == 'N'){
         backward(robotSpeed);
         delay(1000);
-        rotateWest(robotSpeed);
+        rotateTo('W', robotSpeed);
         delay(1000);
         forward(robotSpeed);
         delay(2000);
-        rotateSouth(robotSpeed);
+        rotateTo('S', robotSpeed);
         delay(1000);
         forward(robotSpeed);
     }
     else if(current_dir == 'S'){
         backward(robotSpeed);
         delay(1000);
-        rotateWest(robotSpeed);
+        rotateTo('W', robotSpeed);
         delay(1000);
         forward(robotSpeed);
         delay(2000);
-        rotateNorth(robotSpeed);
+        rotateTo('N', robotSpeed);
         delay(1000);
         forward(robotSpeed);
     }
