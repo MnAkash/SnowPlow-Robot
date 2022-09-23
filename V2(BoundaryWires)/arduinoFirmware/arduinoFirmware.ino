@@ -45,8 +45,8 @@ counterclocwise rotation is negative(on G271 compass)
 #include <JY901.h>
 
 #define USE_PI_COMPASS false
-#define threshold_left 500 //threshold for boundary wire; low value if found
-#define threshold_right 600 //threshold for boundary wire; low value if found
+#define threshold_left 380 //threshold for boundary wire; low value if found
+#define threshold_right 380 //threshold for boundary wire; low value if found
 #define robotSpeed 70 //maxvalue 255
 int maxSpeed = robotSpeed;//used in pid
 
@@ -63,7 +63,8 @@ const int pwm_brush = 3;
 int error_acceptance = 5; //degrees
 char current_dir = 'N'; //can be W/S/E
 int east, west, north, south;
-int sensorReading, value, azimuth;
+int sensorReading, value;
+float azimuth;
 unsigned int sensorCounterLeft=0, sensorCounterRight = 0;
 
 
@@ -160,7 +161,7 @@ int getDirection(){
     azimuth = compass.getAzimuth();
     */
     azimuth = (float)JY901.stcAngle.Angle[2]/32768*180; //Rotation along Z axis
-    azimuth = map(azimuth, -180,180, 0, 360);//witmotion compass returns [-200,200] range values
+    azimuth = map(azimuth, -180,180, 0, 360);//witmotion compass returns [-180,180] range values
     //Serial.println("Azimuth");
     //Serial.println(azimuth);
     return azimuth;
@@ -170,14 +171,14 @@ int getDirection(){
 
 bool isLeft(){
   //Is left foundary sensor found
-   int value_left = analogRead(A0);
-   if(value_left > threshold_left)return true;
+   int value_right = analogRead(A0);
+   if(value_right > threshold_right)return true;
    else return false;
 }
 bool isRight(){
   //Is right foundary sensor found
    int value_left = analogRead(A1);
-   if(value_right < threshold_right)return true;
+   if(value_left > threshold_left)return true;
    else return false;
 }
 
